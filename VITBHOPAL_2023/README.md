@@ -2,241 +2,137 @@
 
 ## Overview
 
-This project presents a deep learning-based automated system for diabetic retinopathy (DR) severity classification using EfficientNet-B0 architecture. The system analyzes retinal fundus photographs to classify DR severity across five categories, achieving 76.47% validation accuracy with substantial clinical agreement (κ = 0.6279).
+This project classifies the severity of diabetic retinopathy (DR) from retinal fundus photographs into five grades, using transfer learning with EfficientNet-B0. It was built as the project for the L&T EduTech *Certificate in AI & Edge Computing for Industry Applications* (VIT Summer Industrial Internship, 2025).
 
+On the validation set the model reaches **76.47% accuracy** with **Cohen's kappa of 0.628**. It separates healthy from diseased eyes well (No_DR F1-score 0.97), but it cannot yet grade the severe and proliferative stages, so it is not suitable for clinical use without further work.
 
-While the model shows excellent performance on common cases (No_DR: 97% F1-score), it has critical limitations in detecting severe cases that require immediate medical attention. The system requires significant improvements before clinical deployment.
+## Files
 
-## 📊 Dataset
+| File | Contents |
+|------|----------|
+| `diabetic_retinopathy_classification (1).ipynb` | Complete Google Colab notebook: data download, training, evaluation (with saved outputs) |
+| `Diabetic Retinopathy Classification Report new.pdf` | Project report as submitted on 6 July 2025 |
+| `train.csv` | Image IDs and severity labels (0–4) for all 3,662 images |
 
-- **Total Images**: 3,662 preprocessed retinal fundus photographs
-- **Training Set**: 2,931 images (80.04%)
-- **Validation Set**: 731 images (19.96%)
-- **Classes**: 5 severity levels of diabetic retinopathy
+The figures in this README are taken from the notebook's saved outputs.
 
-### Class Distribution
+## Dataset
 
-| Class | Training Count | Validation Count | Total | Percentage |
-|-------|----------------|------------------|-------|------------|
-| No_DR | 1,800 | 361 | 2,161 | 59.02% |
-| Moderate | 994 | 199 | 1,193 | 32.58% |
-| Mild | 365 | 74 | 439 | 11.99% |
-| Severe | 188 | 38 | 226 | 6.17% |
-| Proliferate_DR | 290 | 59 | 349 | 9.53% |
+[Diabetic Retinopathy 224x224 Gaussian Filtered](https://www.kaggle.com/datasets/sovitrath/diabetic-retinopathy-224x224-gaussian-filtered) (Kaggle), derived from the [APTOS 2019 Blindness Detection](https://www.kaggle.com/c/aptos2019-blindness-detection) dataset. Images are already resized to 224×224 and Gaussian-filtered.
 
-## 🏗️ Model Architecture
+| Class | Images | Share |
+|-------|--------|-------|
+| No_DR | 1,805 | 49.3% |
+| Mild | 370 | 10.1% |
+| Moderate | 999 | 27.3% |
+| Severe | 193 | 5.3% |
+| Proliferate_DR | 295 | 8.1% |
+| **Total** | **3,662** | **100%** |
 
-The system employs a transfer learning approach with EfficientNet-B0:
+The data is split 80/20 with Keras `validation_split`: **2,931 training** and **731 validation** images.
+
+## Preprocessing
+
+- Pixel values rescaled to [0, 1]
+- Training-only augmentation: rotation ±15°, width/height shift 10%, shear 0.1, zoom 10%, horizontal flip
+- Validation images are only rescaled
+
+## Model
 
 ```
-Input Layer (224×224×3)
+Input (224×224×3)
 ↓
-EfficientNet-B0 Backbone (ImageNet pretrained)
+EfficientNet-B0 (ImageNet weights, first 100 layers frozen)
 ↓
 GlobalAveragePooling2D
 ↓
-Dropout (rate=0.2)
+Dropout(0.3)
 ↓
-Dense(128) + ReLU + Dropout(0.2)
+Dense(128, ReLU)
 ↓
-Dense(5) + Softmax
+Dropout(0.5)
+↓
+Dense(5, Softmax)
 ```
 
-### Model Specifications
-- **Base Model**: EfficientNet-B0 (ImageNet pretrained)
-- **Total Parameters**: 4.21M (4.00M trainable, 0.21M frozen)
-- **Optimizer**: Adam (learning rate: 1×10⁻⁴)
-- **Loss Function**: Categorical Cross-entropy
-- **Batch Size**: 32
-- **Max Epochs**: 45
+- **Parameters:** 4,214,184 total (4,004,961 trainable, 209,223 non-trainable)
+- **Optimizer / loss:** Adam, categorical cross-entropy
+- **Batch size:** 32
+- **Learning rate schedule:** 1e-3 (epochs 1–10), 5e-4 (11–20), 1e-4 (21–30), 5e-5 afterwards
+- **Early stopping:** on validation loss, patience 10, best weights restored
+- **Epochs:** up to 50; training stopped after 46
 
-## 📈 Performance Metrics
+## Results (validation set, 731 images)
 
-### Overall Performance
-- **Accuracy**: 76.47%
-- **Weighted Precision**: 69.66%
-- **Weighted Recall**: 76.47%
-- **Weighted F1-Score**: 72.08%
-- **Cohen's Kappa**: 0.6279 (Substantial agreement)
+| Metric | Value |
+|--------|-------|
+| Accuracy | 0.7647 |
+| Weighted precision | 0.6966 |
+| Weighted recall | 0.7647 |
+| Weighted F1-score | 0.7208 |
+| Macro F1-score | 0.45 |
+| Cohen's kappa | 0.6279 |
+| Quadratic weighted kappa (severity order) | 0.758 |
 
-### Class-wise Performance
-
-| Class | Precision | Recall | F1-Score | Support |
+| Class | Precision | Recall | F1-score | Support |
 |-------|-----------|--------|----------|---------|
 | No_DR | 0.95 | 0.98 | 0.97 | 361 |
-| Moderate | 0.59 | 0.87 | 0.70 | 199 |
 | Mild | 0.55 | 0.42 | 0.48 | 74 |
+| Moderate | 0.59 | 0.87 | 0.70 | 199 |
 | Severe | 0.17 | 0.05 | 0.08 | 38 |
 | Proliferate_DR | 0.00 | 0.00 | 0.00 | 59 |
 
-## 🔧 Installation
+Confusion matrix (rows = true class, columns = predicted class):
 
-### Requirements
-```bash
-pip install tensorflow>=2.8.0
-pip install numpy>=1.21.0
-pip install pandas>=1.3.0
-pip install matplotlib>=3.5.0
-pip install scikit-learn>=1.0.0
-pip install opencv-python>=4.5.0
-```
+| | Mild | Moderate | No_DR | Proliferate_DR | Severe |
+|---|---|---|---|---|---|
+| **Mild** | 31 | 37 | 4 | 0 | 2 |
+| **Moderate** | 10 | 173 | 10 | 0 | 6 |
+| **No_DR** | 4 | 4 | 353 | 0 | 0 |
+| **Proliferate_DR** | 8 | 46 | 3 | 0 | 2 |
+| **Severe** | 3 | 33 | 0 | 0 | 2 |
 
-### Setup
-```bash
-git clone https://github.com/Tech-Savant20/iabetic-Retinopathy-Detection.git
-cd iabetic-Retinopathy-Detection
-pip install -r requirements.txt
-```
+**Note on quadratic weighted kappa.** The notebook prints a QWK of 0.2524. That value is incorrect: Keras assigns class indices alphabetically (Mild=0, Moderate=1, No_DR=2, Proliferate_DR=3, Severe=4), so the quadratic weights did not follow disease severity. Recomputing QWK from the same confusion matrix with the classes in severity order (No_DR, Mild, Moderate, Severe, Proliferate_DR) gives **0.758**.
 
-## 🚀 Usage
+### What the results mean
 
-### Training
-```python
-from model import create_model
-from data_loader import load_data
+- **Screening works well.** Treated as "any DR vs no DR", the model has 95.4% sensitivity (353/370) and 97.8% specificity (353/361). For referable DR (moderate or worse) it has 88.5% sensitivity and 90.1% specificity.
+- **Grading the late stages fails.** 0 of 59 proliferative and 2 of 38 severe cases are graded correctly; 46 and 33 of them respectively are predicted as moderate. These patients would still be referred, but the model cannot say how urgent the referral is.
+- **Mild vs moderate is confused.** 37 of 74 mild cases are predicted as moderate.
 
-# Load and preprocess data
-train_data, val_data = load_data('gaussian_filtered_images/')
+## Limitations
 
-# Create and compile model
-model = create_model()
+- **Class imbalance:** No_DR outnumbers Severe by about 9 to 1, and the rarest grades are the ones the model misses.
+- **Optimistic evaluation:** the same validation set is used both for early stopping (best-weight selection) and for the reported metrics. A separate held-out test set is needed for an unbiased estimate.
+- **Resolution:** 224×224 inputs lose small lesions such as microaneurysms.
+- **Unstable validation curves:** validation accuracy fluctuates strongly between epochs.
 
-# Train model
-history = model.fit(
-    train_data,
-    validation_data=val_data,
-    epochs=45,
-    batch_size=32,
-    callbacks=[early_stopping, model_checkpoint]
-)
-```
+## Possible improvements
 
-### Inference
-```python
-from model import load_trained_model
-from preprocessing import preprocess_image
+- Class weights, oversampling of Severe/Proliferate_DR, or focal loss
+- A separate test split, or stratified k-fold cross-validation
+- Higher input resolution and an ordinal-aware loss
+- Grad-CAM visualisation to check which regions drive predictions
+- 8-bit quantisation (about 16 MB → about 4 MB) for deployment on edge devices
 
-# Load trained model
-model = load_trained_model('best_model.h5')
+## How to run
 
-# Preprocess image
-image = preprocess_image('path/to/retinal_image.jpg')
+1. Open `diabetic_retinopathy_classification (1).ipynb` in [Google Colab](https://colab.research.google.com/) and select a GPU runtime.
+2. Run the cells in order. The first cell downloads the dataset with `kagglehub` (a Kaggle account may be required).
+3. Training takes roughly 45 seconds per epoch on a Colab GPU. The notebook saves the trained model as `diabetic_retinopathy_model.h5` and the metrics as `diabetic_retinopathy_evaluation_results.csv`.
 
-# Make prediction
-prediction = model.predict(image)
-severity_class = get_severity_class(prediction)
-```
+Main libraries: TensorFlow/Keras, NumPy, pandas, scikit-learn, matplotlib, seaborn, kagglehub.
 
-## 📁 Project Structure
+## Screenshot
 
-```
-diabetic-retinopathy-classification/
-├── data/
-│   ├── gaussian_filtered_images/
-│   ├── train/
-│   └── validation/
-├── models/
-│   ├── efficientnet_model.py
-│   └── best_model.h5
-├── preprocessing/
-│   ├── data_loader.py
-│   └── augmentation.py
-├── evaluation/
-│   ├── metrics.py
-│   └── confusion_matrix.py
-├── notebooks/
-│   ├── exploratory_analysis.ipynb
-│   └── model_training.ipynb
-├── requirements.txt
-└── README.md
-```
+![Colab notebook run, 6 July 2025](https://github.com/user-attachments/assets/398968ce-ce3f-4613-add9-ddaf72ee0c61)
 
-## ⚠️ Critical Limitations
+## References
 
-### Severe Case Detection Issues
-- **Severe Class Recall**: Only 5.3% of severe cases correctly identified
-- **Proliferative DR Detection**: 0% detection rate (critical safety issue)
-- **Systematic Bias**: 86.8% of severe cases misclassified as moderate
+- M. Tan and Q. V. Le, "EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks", ICML, 2019.
+- V. Gulshan et al., "Development and Validation of a Deep Learning Algorithm for Detection of Diabetic Retinopathy in Retinal Fundus Photographs", JAMA, 316(22), 2016.
+- APTOS 2019 Blindness Detection, Kaggle, 2019.
 
-### Clinical Risk Assessment
-| Risk Level | Cases | Model Performance | Clinical Recommendation |
-|------------|-------|-------------------|------------------------|
-| Low Risk (No_DR) | 361 | 97.8% accurate | Suitable for screening |
-| Moderate Risk (Mild/Moderate) | 273 | 69.6% accurate | Requires review |
-| High Risk (Severe/Proliferate) | 97 | 2.1% accurate | **Not suitable for clinical use** |
+## Author
 
-## 🔮 Future Improvements
-
-### Immediate Priority (1-3 months)
-- [ ] Implement focal loss for class imbalance
-- [ ] Increase input resolution to 380×380
-- [ ] Add advanced data augmentation (Mixup, CutMix)
-- [ ] Implement ensemble of multiple models
-- [ ] Hyperparameter optimization
-
-### Medium-term Goals (3-6 months)
-- [ ] Collect additional training data for rare classes
-- [ ] Implement curriculum learning strategy
-- [ ] Add model interpretability (GradCAM)
-- [ ] Conduct clinical validation study
-- [ ] Optimize for real-time inference
-
-### Long-term Goals (6-12 months)
-- [ ] Integration with clinical workflow systems
-- [ ] Multi-center validation studies
-- [ ] Regulatory compliance assessment
-- [ ] Production deployment
-- [ ] Continuous learning system
-
-## 📚 Technical Specifications
-
-- **Framework**: TensorFlow/Keras
-- **Hardware**: GPU-accelerated training recommended
-- **Training Time**: ~45 epochs
-- **Inference Time**: <1 second per image
-- **Model Size**: 4.21M parameters
-
-
-### Priority Areas for Contribution
-1. Class imbalance mitigation techniques
-2. Advanced data augmentation methods
-3. Model interpretability features
-4. Clinical validation protocols
-5. Production optimization
-
-
-## 🔬 Citation
-
-If you use this work in your research, please cite:
-
-```bibtex
-@misc{diabetic_retinopathy_classification_2023,
-  title={Deep Learning-Based Automated Diabetic Retinopathy Severity Assessment},
-  author={Tech-Savant20},
-  year={2023},
-  howpublished={GitHub Repository},
-  url={https://github.com/Tech-Savant20/iabetic-Retinopathy-Detection}
-}
-```
-
-
-## ⚡ Quick Start
-
-```bash
-# Clone the repository
-git clone https://github.com/Tech-Savant20/iabetic-Retinopathy-Detection.git
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run training
-python train.py --data_path gaussian_filtered_images/ --epochs 45
-
-# Evaluate model
-python evaluate.py --model_path best_model.h5 --test_data validation/
-```
-
----![screencapture-colab-research-google-drive-1SHeOOxywvcvjOOl2sUUJi7PMvFdr5kwS-2025-07-06-00_55_02](https://github.com/user-attachments/assets/398968ce-ce3f-4613-add9-ddaf72ee0c61)
-
-
-
+Abhyuday Tomar (23BCE11727), VIT Bhopal University — [github.com/Tech-Savant20/Diabetic-Retinopathy-Detection](https://github.com/Tech-Savant20/Diabetic-Retinopathy-Detection)
