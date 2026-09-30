@@ -1,5 +1,9 @@
 # Diabetic Retinopathy Classification using Deep Learning
 
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Tech-Savant20/Diabetic-Retinopathy-Detection/blob/main/diabetic_retinopathy_classification.ipynb)
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![TensorFlow](https://img.shields.io/badge/TensorFlow-Keras-FF6F00?logo=tensorflow&logoColor=white)
+
 ## Overview
 
 This project classifies the severity of diabetic retinopathy (DR) from retinal fundus photographs into five grades, using transfer learning with EfficientNet-B0. It was built as the project for the L&T EduTech *Certificate in AI & Edge Computing for Industry Applications* (VIT Summer Industrial Internship, 2025).
@@ -10,9 +14,10 @@ On the validation set the model reaches **76.47% accuracy** with **Cohen's kappa
 
 | File | Contents |
 |------|----------|
-| `diabetic_retinopathy_classification (1).ipynb` | Complete Google Colab notebook: data download, training, evaluation (with saved outputs) |
-| `Diabetic Retinopathy Classification Report new.pdf` | Project report as submitted on 6 July 2025 |
+| `diabetic_retinopathy_classification.ipynb` | Complete Google Colab notebook: data download, training, evaluation (with saved outputs) |
+| `Diabetic_Retinopathy_Classification_Report.pdf` | Project report as submitted on 6 July 2025 |
 | `train.csv` | Image IDs and severity labels (0–4) for all 3,662 images |
+| `images/` | Training curves and confusion matrix exported from the notebook |
 
 The figures in this README are taken from the notebook's saved outputs.
 
@@ -62,6 +67,8 @@ Dense(5, Softmax)
 - **Early stopping:** on validation loss, patience 10, best weights restored
 - **Epochs:** up to 50; training stopped after 46
 
+![Training and validation accuracy and loss](images/training_curves.png)
+
 ## Results (validation set, 731 images)
 
 | Metric | Value |
@@ -92,6 +99,8 @@ Confusion matrix (rows = true class, columns = predicted class):
 | **Proliferate_DR** | 8 | 46 | 3 | 0 | 2 |
 | **Severe** | 3 | 33 | 0 | 0 | 2 |
 
+<img src="images/confusion_matrix.png" alt="Confusion matrix heatmap" width="520">
+
 **Note on quadratic weighted kappa.** The notebook prints a QWK of 0.2524. That value is incorrect: Keras assigns class indices alphabetically (Mild=0, Moderate=1, No_DR=2, Proliferate_DR=3, Severe=4), so the quadratic weights did not follow disease severity. Recomputing QWK from the same confusion matrix with the classes in severity order (No_DR, Mild, Moderate, Severe, Proliferate_DR) gives **0.758**.
 
 ### What the results mean
@@ -117,7 +126,7 @@ Confusion matrix (rows = true class, columns = predicted class):
 
 ## How to run
 
-1. Open `diabetic_retinopathy_classification (1).ipynb` in [Google Colab](https://colab.research.google.com/) and select a GPU runtime.
+1. Open `diabetic_retinopathy_classification.ipynb` in Google Colab (use the badge at the top) and select a GPU runtime.
 2. Run the cells in order. The first cell downloads the dataset with `kagglehub` (a Kaggle account may be required).
 3. Training takes roughly 45 seconds per epoch on a Colab GPU. The notebook saves the trained model as `diabetic_retinopathy_model.h5` and the metrics as `diabetic_retinopathy_evaluation_results.csv`.
 
